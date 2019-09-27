@@ -1,5 +1,4 @@
-# ga-mlp
-A genetic algorithm for optimizing neural network parameters using Python
+# A genetic algorithm for optimizing neural network parameters using Python
 
 Artificial neural network is a supervised machine learning algorithm very popular in applications in various fields such as speech and image recognition, time series forecasting, machine translation software, among others. They are useful in researches by the ability to solve stochastic problems, which often allows for approximate solutions to extremely complex problems.
 
