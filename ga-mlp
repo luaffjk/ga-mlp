@@ -1,0 +1,76 @@
+from sklearn import datasets
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from random import randint
+import random
+from sklearn.metrics import mean_absolute_error as mae
+
+iris = datasets.load_iris()
+X = iris.data
+y = iris.target
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+
+def inicialization_populacao_mlp(size_mlp):
+    pop =  [[]]*size_mlp
+    activation = ['identity','logistic', 'tanh', 'relu']
+    solver = ['lbfgs','sgd', 'adam']
+    pop = [[random.choice(activation), random.choice(solver),  randint(2,100), randint(2,100)] for i in range(0, size_mlp)]
+    return pop
+
+def crossover_mlp(mother_1, mother_2):
+    child = [mother_1[0], mother_2[1], mother_1[2], mother_2[3]]    
+    return child
+
+def mutation_mlp(child, prob_mut):
+    for c in range(0, len(child)):
+        if np.random.rand() > prob_mut:
+         k = randint(2,3)
+         child[c][k] = int(child[c][k]) + randint(1, 10)
+    return child
+
+def function_fitness_mlp(pop, X_train, y_train, X_test, y_test, size_mlp):
+    fitness = [[]]*size_mlp
+    classifiers = [[]]*size_mlp
+    j = 0
+    for w in pop:
+        clf = MLPClassifier(activation=w[0], solver=w[1], alpha=1e-5, hidden_layer_sizes=(int(w[2]), int(w[3])), random_state=1)
+        clf.fit(X_train, y_train)
+        fitness[j] = mae(clf.predict(X_test), y_test)
+        classifiers[j] = clf
+        j = j+1
+    return fitness, classifiers
+
+def ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_mut=0.5):
+    pop = inicialization_populacao_mlp(size_mlp)
+    fitness, classifiers = function_fitness_mlp(pop,  X_train, y_train, X_test, y_test, size_mlp)
+    pop_fitness = np.array(list(zip(pop, fitness, classifiers)))
+    pop_fitness_sort = pop_fitness[pop_fitness[:,1].argsort()]
+    # population initialization
+    for j in range(0, num_epochs):
+        #seleciona os pais
+        parent_1 = pop_fitness_sort[0:int(size_mlp/2)][:,0]
+        parent_2 = pop_fitness_sort[int(size_mlp/2)::][:,0]
+        #cruzamento
+        child_1 = [crossover_mlp(parent_1[i], parent_2[i]) for i in range(0, len(parent_1))]
+        child_1 = np.array(list(map(list, child_1)))
+        child_2 = [crossover_mlp(parent_2[i], parent_1[i]) for i in range(0, len(parent_1))]
+        child_2 = np.array(list(map(list, child_2)))
+        child_1 = mutation_mlp(child_1, prob_mut)
+        child_2 = mutation_mlp(child_2, prob_mut)
+        #calculates children's fitness to choose who will move on to the next generation
+        fitness_child_1, classifiers_child_1 = function_fitness_mlp(child_1,X_train, y_train, X_test, y_test, size_mlp)
+        fitness_child_2, classifiers_child_2 = function_fitness_mlp(child_2, X_train, y_train, X_test, y_test, size_mlp)
+        fitness_child_1 = np.array(list(zip(child_1, fitness_child_1, classifiers_child_1)))
+        fitness_child_2 = np.array(list(zip(child_2, fitness_child_2, classifiers_child_2)))
+        #selects next generation individuals
+        pop_all = np.concatenate((fitness_child_1, fitness_child_2, pop_fitness), axis=0)
+        pop_all_sort = pop_all[pop_all[:,1].argsort()]
+        best_individual = pop_all_sort[0]
+        pop_fitness_sort = pop_all_sort[0:size_mlp]
+    return pop_fitness_sort[0][2]
+
+melhor_result = ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_mut=0.5)
+print (accuracy_score(melhor_result.predict(X_test), y_test))
