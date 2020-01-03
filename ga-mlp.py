@@ -6,54 +6,63 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from random import randint
 import random
+from sklearn import preprocessing
 from sklearn.metrics import mean_absolute_error as mae
 
 iris = datasets.load_iris()
 X = iris.data
 y = iris.target
+
+min_max = preprocessing.MinMaxScaler()
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
 
-def inicialization_populacao_mlp(size_mlp):
-    pop =  [[]]*size_mlp
+def inicializacao_populacao_mlp(size_mlp):
     activation = ['identity','logistic', 'tanh', 'relu']
     solver = ['lbfgs','sgd', 'adam']
-    pop = [[random.choice(activation), random.choice(solver),  randint(2,100), randint(2,100)] for i in range(0, size_mlp)]
+    pop =  np.array([[random.choice(activation), random.choice(solver), randint(2,100),randint(2,50)]])
+    for i in range(0, size_mlp-1):
+        pop = np.append(pop, [[random.choice(activation), random.choice(solver), randint(2,50),randint(2,50)]], axis=0)
     return pop
 
-def crossover_mlp(mother_1, mother_2):
-    child = [mother_1[0], mother_2[1], mother_1[2], mother_2[3]]    
+def cruzamento_mlp(pai_1, pai_2):
+    child = [pai_1[0], pai_2[1], pai_1[2], pai_2[3]]    
     return child
 
-def mutation_mlp(child, prob_mut):
-    for c in range(0, len(child)):
-        if np.random.rand() > prob_mut:
-         k = randint(2,3)
-         child[c][k] = int(child[c][k]) + randint(1, 10)
-    return child
+def mutacao_mlp(child, prob_mut):
+    child_ = np.copy(child)
+    for c in range(0, len(child_)):
+        if np.random.rand() >= prob_mut:
+            k = randint(2,3)
+            child_[c,k] = int(child_[c,k]) + randint(1, 4)
+    return child_
 
-def function_fitness_mlp(pop, X_train, y_train, X_test, y_test, size_mlp):
-    fitness = [[]]*size_mlp
-    classifiers = [[]]*size_mlp
+
+def function_fitness_mlp(pop, X_train, y_train, X_test, y_test, size_mlp): 
+    fitness = {}
     j = 0
     for w in pop:
-        clf = MLPClassifier(activation=w[0], solver=w[1], alpha=1e-5, hidden_layer_sizes=(int(w[2]), int(w[3])), random_state=1)
-        clf.fit(X_train, y_train)
-        fitness[j] = mae(clf.predict(X_test), y_test)
-        classifiers[j] = clf
-        j = j+1
-    return fitness, classifiers
+        clf = MLPClassifier(activation=w[0], solver=w[1], alpha=1e-5, hidden_layer_sizes=(int(w[2]), int(w[3])),  max_iter=10000, n_iter_no_change=100)
+        #print (X_train)
+        #print(y_train)
+        try:
+            clf.fit(X_train, y_train)
+            fitness[accuracy_score(clf.predict(X_test), y_test)] = [clf, w]
+        except:
+            pass
+    return fitness#collections.OrderedDict(sorted(fitness.items()))
 
-def ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_mut=0.5):
+
+def ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_mut=0.8):
     pop = inicializacao_populacao_mlp(size_mlp)
     fitness = function_fitness_mlp(pop,  X_train, y_train, X_test, y_test, size_mlp)
     pop_fitness_sort = dict(reversed(sorted(fitness.items())))
 
-    
     for j in range(0, num_epochs):#for j in range(0, 1):#num_epochs):
         #seleciona os pais
         parent_1 = np.array(list(dict(list(pop_fitness_sort.items())[:len(pop_fitness_sort)//2]).values()))[:, 1]
         parent_2 = np.array(list(dict(list(pop_fitness_sort.items())[len(pop_fitness_sort)//2:]).values()))[:, 1]
-        #print (len(parent_1), len(parent_2))
+
+        #cruzamento
         child_1 = [cruzamento_mlp(parent_1[i], parent_2[i]) for i in range(0, np.min([len(parent_2), len(parent_1)]))]
         child_2 = [cruzamento_mlp(parent_2[i], parent_1[i]) for i in range(0, np.min([len(parent_2), len(parent_1)]))]
         child_2 = mutacao_mlp(child_2, prob_mut)
@@ -73,5 +82,5 @@ def ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_
         
     return best_individual
 
-melhor_result = ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_mut=0.5)
+melhor_result = ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=20, prob_mut=0.5)
 print (accuracy_score(melhor_result.predict(X_test), y_test))
