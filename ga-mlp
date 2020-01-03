@@ -44,33 +44,34 @@ def function_fitness_mlp(pop, X_train, y_train, X_test, y_test, size_mlp):
     return fitness, classifiers
 
 def ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_mut=0.5):
-    pop = inicialization_populacao_mlp(size_mlp)
-    fitness, classifiers = function_fitness_mlp(pop,  X_train, y_train, X_test, y_test, size_mlp)
-    pop_fitness = np.array(list(zip(pop, fitness, classifiers)))
-    pop_fitness_sort = pop_fitness[pop_fitness[:,1].argsort()]
-    # population initialization
-    for j in range(0, num_epochs):
+    pop = inicializacao_populacao_mlp(size_mlp)
+    fitness = function_fitness_mlp(pop,  X_train, y_train, X_test, y_test, size_mlp)
+    pop_fitness_sort = dict(reversed(sorted(fitness.items())))
+
+    
+    for j in range(0, num_epochs):#for j in range(0, 1):#num_epochs):
         #seleciona os pais
-        parent_1 = pop_fitness_sort[0:int(size_mlp/2)][:,0]
-        parent_2 = pop_fitness_sort[int(size_mlp/2)::][:,0]
-        #cruzamento
-        child_1 = [crossover_mlp(parent_1[i], parent_2[i]) for i in range(0, len(parent_1))]
-        child_1 = np.array(list(map(list, child_1)))
-        child_2 = [crossover_mlp(parent_2[i], parent_1[i]) for i in range(0, len(parent_1))]
-        child_2 = np.array(list(map(list, child_2)))
-        child_1 = mutation_mlp(child_1, prob_mut)
-        child_2 = mutation_mlp(child_2, prob_mut)
-        #calculates children's fitness to choose who will move on to the next generation
-        fitness_child_1, classifiers_child_1 = function_fitness_mlp(child_1,X_train, y_train, X_test, y_test, size_mlp)
-        fitness_child_2, classifiers_child_2 = function_fitness_mlp(child_2, X_train, y_train, X_test, y_test, size_mlp)
-        fitness_child_1 = np.array(list(zip(child_1, fitness_child_1, classifiers_child_1)))
-        fitness_child_2 = np.array(list(zip(child_2, fitness_child_2, classifiers_child_2)))
-        #selects next generation individuals
-        pop_all = np.concatenate((fitness_child_1, fitness_child_2, pop_fitness), axis=0)
-        pop_all_sort = pop_all[pop_all[:,1].argsort()]
-        best_individual = pop_all_sort[0]
-        pop_fitness_sort = pop_all_sort[0:size_mlp]
-    return pop_fitness_sort[0][2]
+        parent_1 = np.array(list(dict(list(pop_fitness_sort.items())[:len(pop_fitness_sort)//2]).values()))[:, 1]
+        parent_2 = np.array(list(dict(list(pop_fitness_sort.items())[len(pop_fitness_sort)//2:]).values()))[:, 1]
+        #print (len(parent_1), len(parent_2))
+        child_1 = [cruzamento_mlp(parent_1[i], parent_2[i]) for i in range(0, np.min([len(parent_2), len(parent_1)]))]
+        child_2 = [cruzamento_mlp(parent_2[i], parent_1[i]) for i in range(0, np.min([len(parent_2), len(parent_1)]))]
+        child_2 = mutacao_mlp(child_2, prob_mut)
+        
+        #calcula o fitness dos filhos para escolher quem vai passar pra próxima geração
+        fitness_child_1 = function_fitness_mlp(child_1,X_train, y_train, X_test, y_test, size_mlp)
+        fitness_child_2 = function_fitness_mlp(child_2, X_train, y_train, X_test, y_test, size_mlp)
+        pop_fitness_sort.update(fitness_child_1)
+        pop_fitness_sort.update(fitness_child_2)
+        sort = dict(reversed(sorted(pop_fitness_sort.items())))
+        
+        #seleciona individuos da proxima geração
+        pop_fitness_sort = dict(list(sort.items())[:size_mlp])
+        best = list(reversed(sorted(pop_fitness_sort.keys())))[0]
+        best_individual = pop_fitness_sort[best][0]
+        print (pop_fitness_sort[best][1], best)
+        
+    return best_individual
 
 melhor_result = ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_mut=0.5)
 print (accuracy_score(melhor_result.predict(X_test), y_test))
