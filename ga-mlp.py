@@ -13,7 +13,7 @@ iris = datasets.load_iris()
 X = iris.data
 y = iris.target
 
-min_max = preprocessing.MinMaxScaler()
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
 
 def inicializacao_populacao_mlp(size_mlp):
@@ -42,14 +42,12 @@ def function_fitness_mlp(pop, X_train, y_train, X_test, y_test, size_mlp):
     j = 0
     for w in pop:
         clf = MLPClassifier(activation=w[0], solver=w[1], alpha=1e-5, hidden_layer_sizes=(int(w[2]), int(w[3])),  max_iter=10000, n_iter_no_change=100)
-        #print (X_train)
-        #print(y_train)
         try:
             clf.fit(X_train, y_train)
             fitness[accuracy_score(clf.predict(X_test), y_test)] = [clf, w]
         except:
             pass
-    return fitness#collections.OrderedDict(sorted(fitness.items()))
+    return fitness
 
 
 def ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_mut=0.8):
@@ -57,7 +55,7 @@ def ag_mlp(X_train, y_train, X_test, y_test, num_epochs = 10, size_mlp=10, prob_
     fitness = function_fitness_mlp(pop,  X_train, y_train, X_test, y_test, size_mlp)
     pop_fitness_sort = dict(reversed(sorted(fitness.items())))
 
-    for j in range(0, num_epochs):#for j in range(0, 1):#num_epochs):
+    for j in range(0, num_epochs):
         #seleciona os pais
         parent_1 = np.array(list(dict(list(pop_fitness_sort.items())[:len(pop_fitness_sort)//2]).values()))[:, 1]
         parent_2 = np.array(list(dict(list(pop_fitness_sort.items())[len(pop_fitness_sort)//2:]).values()))[:, 1]
